@@ -12,7 +12,12 @@
 const http = require('http');
 const socketIo = require('socket.io');
 
-const server = http.createServer();
+const server = http.createServer((req, res) => {
+    // This is a simple health check endpoint.
+    // Hosting services like Render.com ping this to see if the server is alive.
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Signaling server is running.');
+});
 const io = socketIo(server, {
     cors: {
         origin: "*", // In production, restrict this to your frontend's domain for security.
@@ -31,15 +36,25 @@ io.on('connection', (socket) => {
         socket.to(to).emit('signal', { from, signal });
     });
 
-    // --- User Discovery ---
-    // When a new user joins, inform all other connected users.
-    // The new user will then initiate a connection with each of them.
-    socket.broadcast.emit('user-joined', { userId: socket.id });
+    // --- User Discovery (Corrected to match app.js) ---
+    // Get a list of all other connected user IDs.
+    const otherUserIds = [];
+    for (const id of io.sockets.sockets.keys()) {
+        if (id !== socket.id) {
+            otherUserIds.push(id);
+        }
+    }
+    // Send this list to the newly connected user so they can connect to others.
+    socket.emit('users-present', otherUserIds);
+
+    // Announce the new user to everyone else.
+    socket.broadcast.emit('user-joined', socket.id);
 
     // When a user disconnects, inform all other users so they can clean up the connection.
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
-        io.emit('user-left', { userId: socket.id });
+        // The client-side app.js expects the raw socket ID.
+        io.emit('user-left', socket.id);
     });
 });
 
