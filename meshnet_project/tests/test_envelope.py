@@ -12,6 +12,17 @@ def test_envelope_roundtrip():
     assert msg["sequence"] == 0
 
 
+def test_large_compressible_payload_roundtrip():
+    key = generate_session_key()
+    payload = b"hello-mesh-" * 400
+    raw = pack("node-a", "node-b", 2, 3, payload, key)
+    msg = unpack(raw, key)
+    assert msg["payload"] == payload
+    assert msg["sender"] == "node-a"
+    assert msg["stream"] == 2
+    assert msg["sequence"] == 3
+
+
 def test_replay_rejected():
     key = generate_session_key()
     raw = pack("node-a", "node-b", 1, 7, b"hello", key)

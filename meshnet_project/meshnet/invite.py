@@ -32,6 +32,11 @@ def public_key_b64(signing_key: SigningKey) -> str:
     return _b64e(signing_key.verify_key.encode(encoder=RawEncoder))
 
 
+def exchange_public_key_b64(signing_key: SigningKey) -> str:
+    """Return the X25519 exchange public key (base64url) for session key agreement."""
+    return _b64e(bytes(signing_key.verify_key.to_curve25519_public_key()))
+
+
 def create_invite(
     node_id: str,
     nickname: str,
@@ -48,6 +53,7 @@ def create_invite(
         "host": host,
         "port": int(port),
         "public_key": public_key_b64(signing_key),
+        "exchange_public_key": exchange_public_key_b64(signing_key),
         "nonce": uuid.uuid4().hex,
         "issued_at": int(time.time()),
     }

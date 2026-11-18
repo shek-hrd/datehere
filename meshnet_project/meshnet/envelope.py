@@ -1,4 +1,4 @@
-"""Encrypted, replay-protected UDP envelopes."""
+"""Encrypted, replay-protected UDP envelopes (compress-before-encrypt)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ from typing import Any, Dict, Optional, Set, Tuple
 
 from nacl.secret import SecretBox
 from nacl.utils import random as nacl_random
+
+from .compression import compress_payload, decompress_payload
 
 MAGIC = b"MN1"
 VERSION = 1
@@ -41,7 +43,8 @@ def pack(
     header_bytes = json.dumps(header, separators=(",", ":"), sort_keys=True).encode("utf-8")
     box = SecretBox(key)
     nonce = nacl_random(SecretBox.NONCE_SIZE)
-    ciphertext = box.encrypt(bytes(payload), nonce).ciphertext
+    plaintext = compress_payload(bytes(payload))
+    ciphertext = box.encrypt(plaintext, nonce).ciphertext
     return MAGIC + struct.pack("!H", len(header_bytes)) + header_bytes + nonce + ciphertext
 
 
@@ -84,6 +87,11 @@ def unpack(
             raise ValueError("replayed envelope sequence")
         seen.add(replay_key)
 
+    try:
+        payload = decompress_payload(bytes(plaintext))
+    except Exception as exc:
+        raise ValueError(f"invalid envelope payload compression: {exc}") from exc
+
     return {
         "version": header["v"],
         "sender": header["sender"],
@@ -92,5 +100,5 @@ def unpack(
         "sequence": header["seq"],
         "flags": header.get("flags", 0),
         "timestamp": header.get("ts"),
-        "payload": bytes(plaintext),
+        "payload": payload,
     }

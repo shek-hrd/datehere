@@ -32,10 +32,11 @@ def test_direct_chat_ping_route_and_blockchain():
 
 def test_multihop_group_reroute_hail_and_chain():
     net = MeshNetwork()
-    a = net.add_node("android-node", platform="android", udp_port=52417)
-    b = net.add_node("terminal-node", platform="terminal", udp_port=53128)
-    c = net.add_node("browser-node", platform="web")
-    d = net.add_node("alt-node", platform="bash")
+    # Explicit node_ids make equal-length path selection deterministic (BFS explores neighbors in sorted node_id order).
+    a = net.add_node("android-node", platform="android", udp_port=52417, node_id="node-a-android")
+    b = net.add_node("terminal-node", platform="terminal", udp_port=53128, node_id="node-b-terminal")
+    c = net.add_node("browser-node", platform="web", node_id="node-c-browser")
+    d = net.add_node("alt-node", platform="bash", node_id="node-d-alt")
     net.connect(a, b); net.connect(b, c)
     net.connect(a, d); net.connect(d, c)
 
